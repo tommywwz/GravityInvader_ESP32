@@ -7,7 +7,6 @@
 Adafruit_MPU6050 mpu;
 
 volatile double pitch, roll = 0;
-volatile double accX, accY, accZ = 0;
 
 void getAngle(const sensors_event_t& accel)
 {

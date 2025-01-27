@@ -2,7 +2,7 @@
 #define MY_PERIPHERAS_HPP
 
 #include <Wire.h>
-#include "my_lcd.hpp"
+#include "my_oled.hpp"
 #include "my_IMU.hpp"
 
 #endif
