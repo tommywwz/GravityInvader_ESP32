@@ -12,7 +12,7 @@
 class Invader
 {
 public:
-    Invader(int16_t difficulty);
+    Invader();
     ~Invader();
 
     void moveDown();

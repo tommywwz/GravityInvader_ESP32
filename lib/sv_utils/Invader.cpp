@@ -3,7 +3,7 @@
 std::mt19937 Invader::gen(std::random_device{}());
 std::uniform_int_distribution<> Invader::dis(20, SCREEN_WIDTH - 40);
 
-Invader::Invader(int16_t difficulty)
+Invader::Invader()
 {
     // randomize x position
     coordx = dis(gen);

@@ -14,16 +14,17 @@ void taskButton(void *pvParameters);
 
 // semaphores
 SemaphoreHandle_t xSemaButton;
-SemaphoreHandle_t xMutexRender;
+SemaphoreHandle_t xMutexBullets;
+SemaphoreHandle_t xMutexInvaders;
 
 
 void setupFreeRTOS()
 {
     // Initialize the semaphore and mutex
     xSemaButton = xSemaphoreCreateBinary();
-    xMutexRender = xSemaphoreCreateMutex();
+    xMutexBullets = xSemaphoreCreateMutex();
+    xMutexInvaders = xSemaphoreCreateMutex();
 
-    
     // Create a task that will be executed
     xTaskCreatePinnedToCore(
         taskRender,   /* Task function. */
