@@ -167,6 +167,37 @@ void taskGameLogic(void *pvParameters)
 
     for (;;)
     {
+
+        // update bullets position regardless of the game state
+        if (xSemaphoreTake(xMutexBullets, portMAX_DELAY) == pdTRUE)
+        {
+            Serial.println("Update bullets");
+            for (auto it = BulletsMap.begin(); it != BulletsMap.end();)
+            {
+                for (auto bullet = it->second.begin(); bullet != it->second.end();)
+                {
+                    if (bullet->getCoordY() <= 0)
+                    {
+                        bullet = it->second.erase(bullet);
+                    }
+                    else
+                    {
+                        bullet->moveUp(bulletSpeed);
+                        bullet++;
+                    }
+                }
+                if (it->second.empty())
+                {
+                    it = BulletsMap.erase(it);
+                }
+                else
+                {
+                    it++;
+                }
+            }
+            xSemaphoreGive(xMutexBullets);
+        }
+
         switch (gameState.load())
         {
             case GameState::START:
@@ -271,7 +302,7 @@ void taskGameLogic(void *pvParameters)
                         {
                             auto invX = static_cast<uint32_t>((*inv)->getCoordX());
                             auto invY = static_cast<uint32_t>((*inv)->getCoordY());
-                            auto invXBeg = invX - 1 >> GRID_SHIFT;
+                            auto invXBeg = (invX - 1) >> GRID_SHIFT;
                             auto invXEnd = (invX + INVADER_WIDTH + 1) >> GRID_SHIFT;
                             if (BulletsMap.find(invXBeg) != BulletsMap.end())
                             {
@@ -361,37 +392,6 @@ void taskGameLogic(void *pvParameters)
                 break;
         }
 
-        // update bullets position
-        if (xSemaphoreTake(xMutexBullets, portMAX_DELAY) == pdTRUE)
-        {
-            Serial.println("Update bullets");
-            for (auto it = BulletsMap.begin(); it != BulletsMap.end();)
-            {
-                for (auto bullet = it->second.begin(); bullet != it->second.end();)
-                {
-                    if (bullet->getCoordY() <= 0)
-                    {
-                        bullet = it->second.erase(bullet);
-                    }
-                    else
-                    {
-                        bullet->moveUp(bulletSpeed);
-                        bullet++;
-                    }
-                }
-                if (it->second.empty())
-                {
-                    it = BulletsMap.erase(it);
-                }
-                else
-                {
-                    it++;
-                }
-            }
-            xSemaphoreGive(xMutexBullets);
-        }
-
-
 
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20));
     }
@@ -422,10 +422,26 @@ void taskIMU(void *pvParameters)
 void taskButton(void *pvParameters)
 {
     TickType_t lastDebounceTime = 0;
+    TickType_t xLastWakeTime = xTaskGetTickCount();
     for (;;)
     {
         Serial.println("Button task");
-        if (xSemaphoreTake(xSemaButton, portMAX_DELAY) == pdTRUE)
+        auto buttonState = digitalRead(BUTTON_PIN);
+        if (buttonState == LOW)
+        {
+            if (xSemaphoreTake(xMutexBullets, portMAX_DELAY) == pdTRUE)
+            {
+                auto playerX = Player->getCoordX();
+                auto playerY = Player->getCoordY();
+                BulletsMap[static_cast<uint32_t>(playerX + SpaceShip_WIDTH_HALF) >> GRID_SHIFT].push_back(Bullet(playerX + SpaceShip_WIDTH_HALF, playerY));
+                // Bullets.push_back(new Bullet(Player->getCoordX()+SpaceShip_WIDTH_HALF, Player->getCoordY()));
+                xSemaphoreGive(xMutexBullets);
+            }
+
+            vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(200));
+            continue; // skip the rest of the loop since the button is pressed
+        }
+        else if (xSemaphoreTake(xSemaButton, portMAX_DELAY) == pdTRUE)
         {
             Serial.println("Button take semaphore");
             // Debounce
@@ -443,6 +459,7 @@ void taskButton(void *pvParameters)
                 lastDebounceTime = xTaskGetTickCount();
             }
         }
+        xLastWakeTime = xTaskGetTickCount(); // update the last wake time when button is not pressed
         
     }
 }

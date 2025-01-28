@@ -7,7 +7,7 @@ Invader::Invader()
 {
     // randomize x position
     coordx = dis(gen);
-    coordy = 0;
+    coordy = -INVADER_HEIGHT; // start from the top
     isAlive = true;
     speed = 1;
 }
