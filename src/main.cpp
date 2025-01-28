@@ -9,8 +9,8 @@
 #include "Invader.hpp"
 
 #define BUTTON_PIN 4
-#define GRID_SIZE 16
-#define GRID_SHIFT 4 // log2(GRID_SIZE)
+#define GRID_SIZE 8
+#define GRID_SHIFT 3 // log2(GRID_SIZE)
 
 #define START_BUTTON_WIDTH 40
 #define START_BUTTON_HEIGHT 20
@@ -40,7 +40,7 @@ void IRAM_ATTR buttonISR()
     xSemaphoreGiveFromISR(xSemaButton, NULL);
 }
 
-void error_hanlder(const char* msg)
+void error_handler(const char* msg)
 {
     Serial.println(msg);
     while (1)
@@ -73,8 +73,7 @@ void taskRender(void *pvParameters)
         display.print(refreshRate);
         display.print("hz");
 
-
-
+        // render player
         display.drawBitmap(Player->getCoordX(), Player->getCoordY(), Player->getBitmap(), SpaceShip_WIDTH, SpaceShip_HEIGHT, SSD1306_WHITE);
 
         switch (gameState.load())
@@ -109,7 +108,6 @@ void taskRender(void *pvParameters)
                 // render invaders
                 if (xSemaphoreTake(xMutexInvaders, portMAX_DELAY) == pdTRUE)
                 {
-                    Serial.println("Render");
                     for (auto inv : Invaders)
                     {
                         display.drawBitmap(inv->getCoordX(), inv->getCoordY(), inv->getBitmap(), INVADER_WIDTH, INVADER_HEIGHT, SSD1306_WHITE);
@@ -140,7 +138,14 @@ void taskRender(void *pvParameters)
             {
                 for (auto bullet = it->second.begin(); bullet != it->second.end(); bullet++)
                 {
-                    display.drawPixel(bullet->getCoordX(), bullet->getCoordY(), SSD1306_WHITE);
+                    // if (bullet->getCoordX()>>GRID_SHIFT<<GRID_SHIFT == bullet->getCoordX())
+                    // {
+                    //     display.drawRect(bullet->getCoordX(), bullet->getCoordY(), 3, 3, SSD1306_WHITE);
+                    // }
+                    // else
+                    // {
+                        display.drawPixel(bullet->getCoordX(), bullet->getCoordY(), SSD1306_WHITE);
+                    // }
                 }
             }
             xSemaphoreGive(xMutexBullets);
@@ -171,7 +176,6 @@ void taskGameLogic(void *pvParameters)
         // update bullets position regardless of the game state
         if (xSemaphoreTake(xMutexBullets, portMAX_DELAY) == pdTRUE)
         {
-            Serial.println("Update bullets");
             for (auto it = BulletsMap.begin(); it != BulletsMap.end();)
             {
                 for (auto bullet = it->second.begin(); bullet != it->second.end();)
@@ -228,7 +232,6 @@ void taskGameLogic(void *pvParameters)
                 // spawn invaders
                 if (xTaskGetTickCount() - xlastSpawnTime > xSpawnFrequency)
                 {
-                    Serial.println("Spawn");
                     if (xSemaphoreTake(xMutexInvaders, portMAX_DELAY) == pdTRUE)
                     {
                         for (int i = 0; i < diff_dist(gen); i++)
@@ -243,7 +246,6 @@ void taskGameLogic(void *pvParameters)
                 // update invaders position
                 if (xTaskGetTickCount() - xlastInvaderTime > xInvaderDelay)
                 {
-                    Serial.println("Update invaders");
                     if (xSemaphoreTake(xMutexInvaders, portMAX_DELAY) == pdTRUE)
                     {
                         for (auto it = Invaders.begin(); it != Invaders.end();)
@@ -295,15 +297,15 @@ void taskGameLogic(void *pvParameters)
                 // check for collision
                 if (xSemaphoreTake(xMutexInvaders, portMAX_DELAY) == pdTRUE)
                 {
-                    Serial.println("Check collision");
                     for (auto inv = Invaders.begin(); inv != Invaders.end();)
                     {
                         if (xSemaphoreTake(xMutexBullets, portMAX_DELAY) == pdTRUE)
                         {
-                            auto invX = static_cast<uint32_t>((*inv)->getCoordX());
-                            auto invY = static_cast<uint32_t>((*inv)->getCoordY());
-                            auto invXBeg = (invX - 1) >> GRID_SHIFT;
-                            auto invXEnd = (invX + INVADER_WIDTH + 1) >> GRID_SHIFT;
+                            bool destroyed = false; // flag to check if the invader is destroyed in the first loop
+                            auto invX = (*inv)->getCoordX();
+                            auto invY = (*inv)->getCoordY();
+                            auto invXBeg = (invX) >> GRID_SHIFT;
+                            auto invXEnd = (invX + INVADER_WIDTH) >> GRID_SHIFT;
                             if (BulletsMap.find(invXBeg) != BulletsMap.end())
                             {
                                 for (auto bullet = BulletsMap[invXBeg].begin(); bullet != BulletsMap[invXBeg].end();)
@@ -315,6 +317,7 @@ void taskGameLogic(void *pvParameters)
                                         delete *inv;
                                         inv = Invaders.erase(inv);
                                         KillCount.fetch_add(1);
+                                        destroyed = true;
                                         break; // break the inner loop since the invader is destroyed
                                     }
                                     else
@@ -322,12 +325,15 @@ void taskGameLogic(void *pvParameters)
                                         bullet++;
                                     }
                                 }
-                                if (BulletsMap[invXBeg].empty())
+                                if (BulletsMap[invXBeg].empty()) // if the list is empty, remove the key
                                 {
                                     BulletsMap.erase(invXBeg);
                                 }
                             }
-                            else if (BulletsMap.find(invXEnd) != BulletsMap.end())
+
+                            /// if the invader is not destroyed in the first loop, and the beginning and end of the invader is in different grid
+                            /// check the other grid
+                            if (BulletsMap.find(invXEnd) != BulletsMap.end() && !destroyed && invXEnd != invXBeg)
                             {
                                 for (auto bullet = BulletsMap[invXEnd].begin(); bullet != BulletsMap[invXEnd].end();)
                                 {
@@ -345,7 +351,7 @@ void taskGameLogic(void *pvParameters)
                                         bullet++;
                                     }
                                 }
-                                if (BulletsMap[invXEnd].empty())
+                                if (BulletsMap[invXEnd].empty()) // if the list is empty, remove the key
                                 {
                                     BulletsMap.erase(invXEnd);
                                 }
@@ -355,7 +361,6 @@ void taskGameLogic(void *pvParameters)
                         }
                         inv++;
                     }
-                    Serial.println("Check collision end");
                     xSemaphoreGive(xMutexInvaders);
                 }
                 break;
@@ -392,7 +397,6 @@ void taskGameLogic(void *pvParameters)
                 break;
         }
 
-
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(20));
     }
 }
@@ -425,7 +429,6 @@ void taskButton(void *pvParameters)
     TickType_t xLastWakeTime = xTaskGetTickCount();
     for (;;)
     {
-        Serial.println("Button task");
         auto buttonState = digitalRead(BUTTON_PIN);
         if (buttonState == LOW)
         {
@@ -443,7 +446,6 @@ void taskButton(void *pvParameters)
         }
         else if (xSemaphoreTake(xSemaButton, portMAX_DELAY) == pdTRUE)
         {
-            Serial.println("Button take semaphore");
             // Debounce
             if (xTaskGetTickCount() - lastDebounceTime > pdTICKS_TO_MS(100))
             {
