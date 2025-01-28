@@ -28,7 +28,7 @@ public:
      * @param acc_x The acceleration in the x direction
      * @param diff The time difference
      */
-    void moveX(double acc_x, uint32_t diff);
+    void moveX(float acc_x, uint32_t diff);
 
     /**
      * @brief Get the Coord Y object (Thread safe)
@@ -36,7 +36,7 @@ public:
      * @param acc_y The acceleration in the y direction
      * @param diff The time difference
      */
-    void moveY(double acc_y, uint32_t diff);
+    void moveY(float acc_y, uint32_t diff);
 
     /**
      * @brief Get the Coord X object (Thread safe)
@@ -57,11 +57,11 @@ public:
 
 private:
     static const uint8_t PROGMEM spaceship_bmp[];
+    float scalingFactor = 0.2;
 
     int16_t coordx;
     int16_t coordy;
 
-    double scalingFactor = 0.2;
 
     SemaphoreHandle_t xMutex;
 };

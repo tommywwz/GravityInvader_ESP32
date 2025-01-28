@@ -413,8 +413,8 @@ void taskIMU(void *pvParameters)
         mpu.getEvent(&a, &g, &temp);
 
         // flipped x and y because of the orientation of the sensor
-        double accY = -a.acceleration.x; 
-        double accX = -a.acceleration.y;
+        float accY = -a.acceleration.x; 
+        float accX = -a.acceleration.y;
 
         Player->moveX(accX, diff);
         Player->moveY(accY, diff);

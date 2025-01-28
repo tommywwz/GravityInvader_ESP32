@@ -16,7 +16,7 @@ SpaceShip::~SpaceShip()
     }
 }
 
-void SpaceShip::moveX(double acc_x, uint32_t diff)
+void SpaceShip::moveX(float acc_x, uint32_t diff)
 {
     if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
     {
@@ -25,7 +25,7 @@ void SpaceShip::moveX(double acc_x, uint32_t diff)
     }
 }
 
-void SpaceShip::moveY(double acc_y, uint32_t diff)
+void SpaceShip::moveY(float acc_y, uint32_t diff)
 {
     if (xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE)
     {
