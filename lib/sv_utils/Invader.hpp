@@ -4,7 +4,7 @@
 #include <Arduino.h>
 #include <random>
 
-#include "my_oled.hpp"
+#include "my_ILI9341_lcd.hpp"
 
 #define INVADER_WIDTH 8
 #define INVADER_HEIGHT 8

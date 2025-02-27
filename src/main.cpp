@@ -8,7 +8,7 @@
 #include "Bullet.hpp"
 #include "Invader.hpp"
 
-#define BUTTON_PIN 4
+#define BUTTON_PIN 15
 #define GRID_SIZE 8
 #define GRID_SHIFT 3 // log2(GRID_SIZE)
 
@@ -55,7 +55,7 @@ void taskRender(void *pvParameters)
     for (;;)
     {
         auto currTick = xTaskGetTickCount();
-        display.clearDisplay();
+        display.fillScreen(ILI9341_BLACK);
 
         auto diff = currTick - xLastWakeTime;
         auto refreshRate = 1000;
@@ -69,27 +69,27 @@ void taskRender(void *pvParameters)
         // Display refresh rate
         display.setCursor(SCREEN_WIDTH - 25, 0);
         display.setTextSize(1);
-        display.setTextColor(SSD1306_WHITE);
+        display.setTextColor(MY_DISPLAY_WHITE);
         display.print(refreshRate);
         display.print("hz");
 
         // render player
-        display.drawBitmap(Player->getCoordX(), Player->getCoordY(), Player->getBitmap(), SpaceShip_WIDTH, SpaceShip_HEIGHT, SSD1306_WHITE);
+        display.drawBitmap(Player->getCoordX(), Player->getCoordY(), Player->getBitmap(), SpaceShip_WIDTH, SpaceShip_HEIGHT, MY_DISPLAY_WHITE);
 
         switch (gameState.load())
         {
             case GameState::START:
             {
                 // if bullet hit the start button, start the game
-                display.drawRoundRect(START_BUTTON_X, START_BUTTON_Y, START_BUTTON_WIDTH, START_BUTTON_HEIGHT, 3, SSD1306_WHITE);
+                display.drawRoundRect(START_BUTTON_X, START_BUTTON_Y, START_BUTTON_WIDTH, START_BUTTON_HEIGHT, 3, MY_DISPLAY_WHITE);
                 display.setCursor(START_BUTTON_X + 5, START_BUTTON_Y + 5);
                 display.setTextSize(1);
-                display.setTextColor(SSD1306_WHITE);
+                display.setTextColor(MY_DISPLAY_WHITE);
                 display.println("Start");
 
                 display.setCursor(0, 0);
                 display.setTextSize(1);
-                display.setTextColor(SSD1306_WHITE);
+                display.setTextColor(MY_DISPLAY_WHITE);
                 display.println("Best: ");
                 display.print(BestScore.load());
 
@@ -101,7 +101,7 @@ void taskRender(void *pvParameters)
                 // Display kill count
                 display.setCursor(0, 0);
                 display.setTextSize(1);
-                display.setTextColor(SSD1306_WHITE);
+                display.setTextColor(MY_DISPLAY_WHITE);
                 display.println("Kills: ");
                 display.print(KillCount.load());
 
@@ -110,7 +110,7 @@ void taskRender(void *pvParameters)
                 {
                     for (auto inv : Invaders)
                     {
-                        display.drawBitmap(inv->getCoordX(), inv->getCoordY(), inv->getBitmap(), INVADER_WIDTH, INVADER_HEIGHT, SSD1306_WHITE);
+                        display.drawBitmap(inv->getCoordX(), inv->getCoordY(), inv->getBitmap(), INVADER_WIDTH, INVADER_HEIGHT, MY_DISPLAY_WHITE);
                     }
                     xSemaphoreGive(xMutexInvaders);
                 }
@@ -122,7 +122,7 @@ void taskRender(void *pvParameters)
             {
                 display.setCursor(HALF_SCREEN_WIDTH - 53, HALF_SCREEN_HEIGHT - 10);
                 display.setTextSize(2);
-                display.setTextColor(SSD1306_WHITE);
+                display.setTextColor(MY_DISPLAY_WHITE);
                 display.println("Game Over");
                 break;
             }
@@ -144,16 +144,14 @@ void taskRender(void *pvParameters)
                     // }
                     // else
                     // {
-                        display.drawPixel(bullet->getCoordX(), bullet->getCoordY(), SSD1306_WHITE);
+                        display.drawPixel(bullet->getCoordX(), bullet->getCoordY(), MY_DISPLAY_WHITE);
                     // }
                 }
             }
             xSemaphoreGive(xMutexBullets);
         }
 
-        display.display();
-
-        vTaskDelay(pdMS_TO_TICKS(10));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 }
 
@@ -475,7 +473,10 @@ void setup()
     pinMode(BUTTON_PIN, INPUT_PULLUP);
     attachInterrupt(digitalPinToInterrupt(BUTTON_PIN), buttonISR, FALLING);
 
+    // setup display
     setupDisplay();
+
+    // setup IMU
     setupGyro();
     
     Player = new SpaceShip();
@@ -483,7 +484,7 @@ void setup()
     KillCount.store(0);
     BestScore.store(0);
 
-    setupFreeRTOS();    
+    setupFreeRTOS();
 }
 
 void loop()
